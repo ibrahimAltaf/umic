@@ -34,16 +34,24 @@ jobs:
           fi
           USERNAME="${HOSTINGER_USERNAME:-u568003891}"
           DOMAIN="${HOSTINGER_DOMAIN:-navajowhite-zebra-173468.hostingersite.com}"
-          # archive-only multipart avoids Cloudflare bot challenge on extra fields
-          RESP=$(curl -sS -w '\n%{http_code}' \
-            -H "Authorization: Bearer $HOSTINGER_API_TOKEN" \
-            -H 'Accept: application/json' \
-            -F "archive=@/tmp/umic-boot.zip;type=application/zip" \
-            "https://developers.hostinger.com/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds/from-archive")
-          CODE=$(echo "$RESP" | tail -n1)
-          BODY=$(echo "$RESP" | sed '$d')
-          echo "$BODY"
-          echo "HTTP $CODE"
+          # archive-only multipart; retry on Cloudflare 403
+          for attempt in 1 2 3 4 5 6; do
+            echo "Upload attempt $attempt"
+            RESP=$(curl -sS -w '\n%{http_code}' \
+              -H "Authorization: Bearer $HOSTINGER_API_TOKEN" \
+              -H 'Accept: application/json' \
+              -H 'User-Agent: hostinger-api-sdk/1.5.1' \
+              -F "archive=@/tmp/umic-boot.zip;type=application/zip" \
+              "https://developers.hostinger.com/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds/from-archive")
+            CODE=$(echo "$RESP" | tail -n1)
+            BODY=$(echo "$RESP" | sed '$d')
+            echo "HTTP $CODE"
+            echo "$BODY" | head -c 500; echo
+            if [ "$CODE" = "200" ]; then
+              break
+            fi
+            sleep $((attempt * 20))
+          done
           test "$CODE" = "200"
           UUID=$(echo "$BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin)["uuid"])')
           echo "Build UUID=$UUID"
