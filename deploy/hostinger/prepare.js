@@ -39,6 +39,7 @@ function download(u, dest) {
     .readdirSync(__dirname)
     .find((d) => d.startsWith("umic-") && fs.statSync(path.join(__dirname, d)).isDirectory());
   if (!dir) throw new Error("extract failed");
+
   const src = path.join(__dirname, dir, "apps", "web");
   const dest = path.join(__dirname, "app");
   fs.rmSync(dest, { recursive: true, force: true });
@@ -47,9 +48,36 @@ function download(u, dest) {
   const pkgPath = path.join(dest, "package.json");
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
   pkg.scripts = pkg.scripts || {};
-  // Hostinger injects PORT; next start respects it. Bind all interfaces.
   pkg.scripts.start = "next start -H 0.0.0.0";
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+
+  // Express-style entry Hostinger can keep running
+  fs.writeFileSync(
+    path.join(__dirname, "server.js"),
+    `const { spawn } = require("child_process");
+const path = require("path");
+const appDir = path.join(__dirname, "app");
+const nextBin = path.join(appDir, "node_modules", "next", "dist", "bin", "next");
+const child = spawn(process.execPath, [nextBin, "start", "-H", "0.0.0.0"], {
+  cwd: appDir,
+  stdio: "inherit",
+  env: process.env,
+});
+child.on("exit", (code) => process.exit(code || 0));
+`
+  );
+
+  console.log("Installing and building Next.js app...");
+  execSync("npm install", {
+    stdio: "inherit",
+    cwd: dest,
+    env: { ...process.env, NODE_ENV: "development" },
+  });
+  execSync("npm run build", {
+    stdio: "inherit",
+    cwd: dest,
+    env: { ...process.env, NODE_ENV: "production" },
+  });
   console.log("Prepared", src);
 })().catch((e) => {
   console.error(e);

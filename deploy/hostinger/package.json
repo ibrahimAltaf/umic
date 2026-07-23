@@ -1,9 +1,13 @@
 {
   "name": "umic-hostinger-boot",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
+  "main": "server.js",
   "scripts": {
-    "build": "node prepare.js && npm --prefix app install && npm --prefix app run build",
-    "start": "npm --prefix app run start"
+    "build": "node prepare.js",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

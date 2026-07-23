@@ -34,10 +34,16 @@ jobs:
           fi
           USERNAME="${HOSTINGER_USERNAME:-u568003891}"
           DOMAIN="${HOSTINGER_DOMAIN:-navajowhite-zebra-173468.hostingersite.com}"
+          # Express + entry_file so Hostinger runs a persistent Node process
           RESP=$(curl -sS -w '\n%{http_code}' \
             -H "Authorization: Bearer $HOSTINGER_API_TOKEN" \
             -H 'Accept: application/json' \
             -F "archive=@/tmp/umic-boot.zip;type=application/zip" \
+            -F "node_version=20" \
+            -F "app_type=express" \
+            -F "build_script=build" \
+            -F "entry_file=server.js" \
+            -F "package_manager=npm" \
             "https://developers.hostinger.com/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds/from-archive")
           CODE=$(echo "$RESP" | tail -n1)
           BODY=$(echo "$RESP" | sed '$d')
@@ -46,6 +52,7 @@ jobs:
           test "$CODE" = "200"
           UUID=$(echo "$BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin)["uuid"])')
           echo "Build UUID=$UUID"
+          echo "$BODY" | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin).get("options"), indent=2))'
           for i in $(seq 1 90); do
             LIST=$(curl -sS -H "Authorization: Bearer $HOSTINGER_API_TOKEN" -H 'Accept: application/json' \
               "https://developers.hostinger.com/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds")
@@ -61,7 +68,13 @@ jobs:
             sleep 10
           done
           curl -sS -X POST -H "Authorization: Bearer $HOSTINGER_API_TOKEN" -H 'Accept: application/json' \
-            "https://developers.hostinger.com/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/server/restart" || true
-          sleep 8
-          curl -sS -o /tmp/out.html -w 'SITE:%{http_code}\n' "https://${DOMAIN}/login" || true
-          head -c 300 /tmp/out.html || true
+            "https://developers.hostinger.com/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/server/restart"
+          echo
+          sleep 15
+          echo "Checking site..."
+          for path in / /login /dashboard; do
+            CODE=$(curl -sS -o /tmp/out.html -w '%{http_code}' -A 'Mozilla/5.0' "https://${DOMAIN}${path}" || echo err)
+            TITLE=$(grep -o '<title>[^<]*</title>' /tmp/out.html | head -1 || true)
+            echo "${path} -> HTTP ${CODE} ${TITLE}"
+          done
+          head -c 400 /tmp/out.html || true
