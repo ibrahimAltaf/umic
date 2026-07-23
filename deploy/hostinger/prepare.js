@@ -31,6 +31,11 @@ function download(u, dest) {
   });
 }
 
+function write(file, content) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+}
+
 (async () => {
   console.log("Downloading", url);
   await download(url, tgz);
@@ -45,29 +50,31 @@ function download(u, dest) {
   fs.rmSync(dest, { recursive: true, force: true });
   fs.cpSync(src, dest, { recursive: true });
 
-  const pkgPath = path.join(dest, "package.json");
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-  pkg.scripts = pkg.scripts || {};
-  pkg.scripts.start = "next start -H 0.0.0.0";
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
-
-  // Express-style entry Hostinger can keep running
-  fs.writeFileSync(
-    path.join(__dirname, "server.js"),
-    `const { spawn } = require("child_process");
-const path = require("path");
-const appDir = path.join(__dirname, "app");
-const nextBin = path.join(appDir, "node_modules", "next", "dist", "bin", "next");
-const child = spawn(process.execPath, [nextBin, "start", "-H", "0.0.0.0"], {
-  cwd: appDir,
-  stdio: "inherit",
-  env: process.env,
-});
-child.on("exit", (code) => process.exit(code || 0));
+  // Static export for Hostinger shared/static Node build pipeline
+  write(
+    path.join(dest, "next.config.ts"),
+    `import type { NextConfig } from "next";
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  output: "export",
+  trailingSlash: true,
+  images: { unoptimized: true },
+};
+export default nextConfig;
 `
   );
 
-  console.log("Installing and building Next.js app...");
+  // Ensure dynamic [id] routes are exportable; .htaccess rewrites real IDs to this shell page
+  for (const rel of ["src/app/(app)/matters/[id]/page.tsx", "src/app/(app)/entities/[id]/page.tsx"]) {
+    const file = path.join(dest, rel);
+    let text = fs.readFileSync(file, "utf8");
+    if (!text.includes("generateStaticParams")) {
+      text += `\nexport function generateStaticParams() {\n  return [{ id: "placeholder" }];\n}\n`;
+      fs.writeFileSync(file, text);
+    }
+  }
+
+  console.log("npm install + next build (static export)...");
   execSync("npm install", {
     stdio: "inherit",
     cwd: dest,
@@ -78,7 +85,37 @@ child.on("exit", (code) => process.exit(code || 0));
     cwd: dest,
     env: { ...process.env, NODE_ENV: "production" },
   });
-  console.log("Prepared", src);
+
+  const outDir = path.join(dest, "out");
+  if (!fs.existsSync(outDir)) throw new Error("missing out/ after export build");
+
+  // Hostinger Vite/SPA pipeline publishes dist/ to the live site
+  const dist = path.join(__dirname, "dist");
+  fs.rmSync(dist, { recursive: true, force: true });
+  fs.cpSync(outDir, dist, { recursive: true });
+
+  write(
+    path.join(dist, ".htaccess"),
+    `RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^matters/[^/]+/?$ /matters/placeholder/index.html [L]
+RewriteRule ^entities/[^/]+/?$ /entities/placeholder/index.html [L]
+`
+  );
+
+  // Also copy into public_html in case detector leaves output_directory empty
+  const publicHtml = path.resolve(__dirname, "..", "..");
+  if (fs.existsSync(publicHtml) && publicHtml.includes("public_html")) {
+    for (const name of fs.readdirSync(dist)) {
+      fs.cpSync(path.join(dist, name), path.join(publicHtml, name), { recursive: true });
+    }
+    console.log("Also copied dist ->", publicHtml);
+  }
+
+  console.log("Static dist/ ready");
 })().catch((e) => {
   console.error(e);
   process.exit(1);

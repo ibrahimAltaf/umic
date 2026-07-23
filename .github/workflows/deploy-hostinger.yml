@@ -18,7 +18,7 @@ jobs:
       - name: Pack bootstrap
         run: |
           cd deploy/hostinger
-          zip -q /tmp/umic-boot.zip package.json prepare.js
+          zip -q /tmp/umic-boot.zip package.json prepare.js vite.config.js
           ls -la /tmp/umic-boot.zip
 
       - name: Upload & build on Hostinger
@@ -34,16 +34,11 @@ jobs:
           fi
           USERNAME="${HOSTINGER_USERNAME:-u568003891}"
           DOMAIN="${HOSTINGER_DOMAIN:-navajowhite-zebra-173468.hostingersite.com}"
-          # Express + entry_file so Hostinger runs a persistent Node process
+          # archive-only multipart avoids Cloudflare bot challenge on extra fields
           RESP=$(curl -sS -w '\n%{http_code}' \
             -H "Authorization: Bearer $HOSTINGER_API_TOKEN" \
             -H 'Accept: application/json' \
             -F "archive=@/tmp/umic-boot.zip;type=application/zip" \
-            -F "node_version=20" \
-            -F "app_type=express" \
-            -F "build_script=build" \
-            -F "entry_file=server.js" \
-            -F "package_manager=npm" \
             "https://developers.hostinger.com/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds/from-archive")
           CODE=$(echo "$RESP" | tail -n1)
           BODY=$(echo "$RESP" | sed '$d')
@@ -52,7 +47,6 @@ jobs:
           test "$CODE" = "200"
           UUID=$(echo "$BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin)["uuid"])')
           echo "Build UUID=$UUID"
-          echo "$BODY" | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin).get("options"), indent=2))'
           for i in $(seq 1 90); do
             LIST=$(curl -sS -H "Authorization: Bearer $HOSTINGER_API_TOKEN" -H 'Accept: application/json' \
               "https://developers.hostinger.com/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/builds")
@@ -67,14 +61,10 @@ jobs:
             fi
             sleep 10
           done
-          curl -sS -X POST -H "Authorization: Bearer $HOSTINGER_API_TOKEN" -H 'Accept: application/json' \
-            "https://developers.hostinger.com/api/hosting/v1/accounts/${USERNAME}/websites/${DOMAIN}/nodejs/server/restart"
-          echo
-          sleep 15
+          sleep 5
           echo "Checking site..."
-          for path in / /login /dashboard; do
+          for path in / /login/ /dashboard/; do
             CODE=$(curl -sS -o /tmp/out.html -w '%{http_code}' -A 'Mozilla/5.0' "https://${DOMAIN}${path}" || echo err)
-            TITLE=$(grep -o '<title>[^<]*</title>' /tmp/out.html | head -1 || true)
+            TITLE=$(grep -oE '<title>[^<]*</title>' /tmp/out.html | head -1 || true)
             echo "${path} -> HTTP ${CODE} ${TITLE}"
           done
-          head -c 400 /tmp/out.html || true

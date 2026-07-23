@@ -1,13 +1,9 @@
 {
-  "name": "umic-hostinger-boot",
-  "version": "1.0.5",
+  "name": "umic-web",
   "private": true,
-  "main": "server.js",
   "scripts": {
+    "dev": "vite",
     "build": "node prepare.js",
-    "start": "node server.js"
-  },
-  "engines": {
-    "node": ">=20"
+    "preview": "vite preview"
   }
 }
