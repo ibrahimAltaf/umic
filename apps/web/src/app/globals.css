@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* UMIC visual system — ink + seafoam (ops intelligence), not purple/cream defaults */
+:root {
+  --background: 150 12% 96%;
+  --foreground: 160 28% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 160 28% 10%;
+  --primary: 162 48% 22%;
+  --primary-foreground: 150 20% 98%;
+  --secondary: 150 10% 92%;
+  --secondary-foreground: 160 22% 18%;
+  --muted: 150 10% 93%;
+  --muted-foreground: 160 8% 40%;
+  --accent: 168 35% 90%;
+  --accent-foreground: 162 48% 18%;
+  --destructive: 4 72% 46%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 150 12% 86%;
+  --input: 150 12% 86%;
+  --ring: 162 48% 22%;
+  --radius: 0.65rem;
+  --sidebar: 165 35% 9%;
+  --sidebar-foreground: 150 15% 94%;
+  --sidebar-border: 165 25% 14%;
+  --sidebar-accent: 162 40% 16%;
+  --signal: 38 72% 48%;
+  --signal-foreground: 40 40% 12%;
+}
+
+.dark {
+  --background: 165 28% 7%;
+  --foreground: 150 12% 94%;
+  --card: 165 24% 10%;
+  --card-foreground: 150 12% 94%;
+  --primary: 162 45% 48%;
+  --primary-foreground: 165 40% 8%;
+  --secondary: 165 16% 16%;
+  --secondary-foreground: 150 12% 94%;
+  --muted: 165 16% 14%;
+  --muted-foreground: 150 8% 62%;
+  --accent: 162 22% 16%;
+  --accent-foreground: 162 50% 72%;
+  --destructive: 4 62% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 165 16% 18%;
+  --input: 165 16% 18%;
+  --ring: 162 45% 48%;
+  --sidebar: 165 32% 6%;
+  --sidebar-foreground: 150 12% 94%;
+  --sidebar-border: 165 20% 12%;
+  --sidebar-accent: 162 28% 12%;
+  --signal: 38 78% 55%;
+  --signal-foreground: 40 40% 10%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(ellipse 90% 55% at 110% -10%, hsl(162 45% 40% / 0.14), transparent 55%),
+      radial-gradient(ellipse 70% 45% at -15% 110%, hsl(38 70% 50% / 0.08), transparent 50%),
+      linear-gradient(180deg, hsl(150 12% 97%), hsl(150 14% 94%));
+    min-height: 100vh;
+  }
+  .dark body {
+    background-image:
+      radial-gradient(ellipse 90% 55% at 110% -10%, hsl(162 45% 35% / 0.18), transparent 55%),
+      radial-gradient(ellipse 70% 45% at -15% 110%, hsl(38 60% 40% / 0.08), transparent 50%),
+      linear-gradient(180deg, hsl(165 28% 7%), hsl(165 26% 8%));
+  }
+  ::selection {
+    background: hsl(162 48% 22% / 0.2);
+  }
+}
+
+@layer components {
+  .umic-panel {
+    @apply rounded-lg border border-border/80 bg-card/90 shadow-panel backdrop-blur-sm;
+  }
+  .umic-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
+  }
+  .umic-title {
+    @apply font-display text-3xl font-semibold tracking-tight text-foreground md:text-[2rem];
+  }
+  .umic-grid-noise {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.45) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.45) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
+  }
+}

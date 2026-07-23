@@ -1,0 +1,38 @@
+# FastAPI & ASGI
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+
+# Database
+SQLAlchemy[asyncio]==2.0.40
+psycopg[binary]==3.2.13
+alembic==1.15.2
+
+# Validation & settings
+pydantic==2.11.3
+pydantic-settings==2.8.1
+email-validator==2.2.0
+
+# Auth & security
+python-jose[cryptography]==3.4.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.3.0
+
+# Redis / rate limiting
+redis==5.2.1
+slowapi==0.1.9
+
+pypdf==5.4.0
+Pillow==11.1.0
+# Optional OCR (install system tesseract too): pytesseract, pdf2image
+pytesseract==0.3.13
+
+# Testing
+pytest==8.3.5
+pytest-asyncio==0.26.0
+pytest-cov==6.1.1
+factory-boy==3.3.3
+freezegun==1.5.1
+
+# Dev
+ruff==0.11.5
