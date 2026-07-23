@@ -64,14 +64,12 @@ export default nextConfig;
 `
   );
 
-  // Ensure dynamic [id] routes are exportable; .htaccess rewrites real IDs to this shell page
-  for (const rel of ["src/app/(app)/matters/[id]/page.tsx", "src/app/(app)/entities/[id]/page.tsx"]) {
-    const file = path.join(dest, rel);
-    let text = fs.readFileSync(file, "utf8");
-    if (!text.includes("generateStaticParams")) {
-      text += `\nexport function generateStaticParams() {\n  return [{ id: "placeholder" }];\n}\n`;
-      fs.writeFileSync(file, text);
-    }
+  // generateStaticParams must be in a Server Component (not the "use client" page)
+  for (const rel of ["src/app/(app)/matters/[id]", "src/app/(app)/entities/[id]"]) {
+    write(
+      path.join(dest, rel, "layout.tsx"),
+      `export function generateStaticParams() {\n  return [{ id: "placeholder" }];\n}\n\nexport default function Layout({ children }: { children: React.ReactNode }) {\n  return children;\n}\n`
+    );
   }
 
   console.log("npm install + next build (static export)...");
