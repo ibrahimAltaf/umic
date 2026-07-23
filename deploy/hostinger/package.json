@@ -1,0 +1,9 @@
+{
+  "name": "umic-hostinger-boot",
+  "version": "1.0.4",
+  "private": true,
+  "scripts": {
+    "build": "node prepare.js && npm --prefix app install && npm --prefix app run build",
+    "start": "npm --prefix app run start"
+  }
+}
